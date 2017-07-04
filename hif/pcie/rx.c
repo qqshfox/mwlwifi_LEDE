@@ -38,20 +38,6 @@
 
 #define W836X_RSSI_OFFSET       8
 
-/* Receive rate information constants */
-#define RX_RATE_INFO_FORMAT_11A       0
-#define RX_RATE_INFO_FORMAT_11B       1
-#define RX_RATE_INFO_FORMAT_11N       2
-#define RX_RATE_INFO_FORMAT_11AC      4
-
-#define RX_RATE_INFO_HT20             0
-#define RX_RATE_INFO_HT40             1
-#define RX_RATE_INFO_HT80             2
-#define RX_RATE_INFO_HT160            3
-
-#define RX_RATE_INFO_LONG_INTERVAL    0
-#define RX_RATE_INFO_SHORT_INTERVAL   1
-
 static int pcie_rx_ring_alloc(struct mwl_priv *priv)
 {
 	struct pcie_priv *pcie_priv = priv->hif.priv;
@@ -209,62 +195,27 @@ static void pcie_rx_ring_free(struct mwl_priv *priv)
 	desc->pnext_rx_hndl = NULL;
 }
 
-static inline void pcie_rx_prepare_status(struct pcie_rx_desc *pdesc,
-					  struct ieee80211_rx_status *status)
+static inline void pcie_rx_status(struct mwl_priv *priv,
+				  struct pcie_rx_desc *pdesc,
+				  struct ieee80211_rx_status *status)
 {
-	u16 rate, format, nss, bw, gi, rt;
+	u16 rx_rate;
 
 	memset(status, 0, sizeof(*status));
-
 	status->signal = -(pdesc->rssi + W836X_RSSI_OFFSET);
 
-	rate = le16_to_cpu(pdesc->rate);
-	format = rate & MWL_RX_RATE_FORMAT_MASK;
-	nss = (rate & MWL_RX_RATE_NSS_MASK) >> MWL_RX_RATE_NSS_SHIFT;
-	bw = (rate & MWL_RX_RATE_BW_MASK) >> MWL_RX_RATE_BW_SHIFT;
-	gi = (rate & MWL_RX_RATE_GI_MASK) >> MWL_RX_RATE_GI_SHIFT;
-	rt = (rate & MWL_RX_RATE_RT_MASK) >> MWL_RX_RATE_RT_SHIFT;
-
-	switch (format) {
-	case RX_RATE_INFO_FORMAT_11N:
-		status->flag |= RX_FLAG_HT;
-		if (bw == RX_RATE_INFO_HT40)
-			status->flag |= RX_FLAG_40MHZ;
-		if (gi == RX_RATE_INFO_SHORT_INTERVAL)
-			status->flag |= RX_FLAG_SHORT_GI;
-		break;
-	case RX_RATE_INFO_FORMAT_11AC:
-		status->flag |= RX_FLAG_VHT;
-		if (bw == RX_RATE_INFO_HT40)
-			status->flag |= RX_FLAG_40MHZ;
-		if (bw == RX_RATE_INFO_HT80)
-			status->vht_flag |= RX_VHT_FLAG_80MHZ;
-		if (bw == RX_RATE_INFO_HT160)
-			status->vht_flag |= RX_VHT_FLAG_160MHZ;
-		if (gi == RX_RATE_INFO_SHORT_INTERVAL)
-			status->flag |= RX_FLAG_SHORT_GI;
-		status->vht_nss = (nss + 1);
-		break;
-	}
-
-	status->rate_idx = rt;
-
-	if (pdesc->channel > BAND_24_CHANNEL_NUM) {
-		status->band = NL80211_BAND_5GHZ;
-		if ((!(status->flag & RX_FLAG_HT)) &&
-		    (!(status->flag & RX_FLAG_VHT))) {
-			status->rate_idx -= 5;
-			if (status->rate_idx >= BAND_50_RATE_NUM)
-				status->rate_idx = BAND_50_RATE_NUM - 1;
-		}
-	} else {
-		status->band = NL80211_BAND_2GHZ;
-		if ((!(status->flag & RX_FLAG_HT)) &&
-		    (!(status->flag & RX_FLAG_VHT))) {
-			if (status->rate_idx >= BAND_24_RATE_NUM)
-				status->rate_idx = BAND_24_RATE_NUM - 1;
-		}
-	}
+	rx_rate = le16_to_cpu(pdesc->rate);
+	pcie_rx_prepare_status(priv,
+			       rx_rate & MWL_RX_RATE_FORMAT_MASK,
+			       (rx_rate & MWL_RX_RATE_NSS_MASK) >>
+			       MWL_RX_RATE_NSS_SHIFT,
+			       (rx_rate & MWL_RX_RATE_BW_MASK) >>
+			       MWL_RX_RATE_BW_SHIFT,
+			       (rx_rate & MWL_RX_RATE_GI_MASK) >>
+			       MWL_RX_RATE_GI_SHIFT,
+			       (rx_rate & MWL_RX_RATE_RT_MASK) >>
+			       MWL_RX_RATE_RT_SHIFT,
+			       status);
 
 	status->freq = ieee80211_channel_to_frequency(pdesc->channel,
 						      status->band);
@@ -401,7 +352,7 @@ void pcie_rx_recv(unsigned long data)
 			goto out;
 		}
 
-		pcie_rx_prepare_status(curr_hndl->pdesc, &status);
+		pcie_rx_status(priv, curr_hndl->pdesc, &status);
 
 		priv->noise = -curr_hndl->pdesc->noise_floor;
 
