@@ -27,7 +27,7 @@
 #include <net/mac80211.h>
 
 #define PCIE_DRV_NAME    KBUILD_MODNAME
-#define PCIE_DRV_VERSION "10.3.4.0-20180226"
+#define PCIE_DRV_VERSION "10.3.4.0-20180305"
 
 #define PCIE_MIN_BYTES_HEADROOM   64
 #define PCIE_NUM_OF_DESC_DATA     SYSADPT_TOTAL_TX_QUEUES
@@ -541,7 +541,8 @@ struct pcie_priv {
 	/* for tx descriptor data  */
 	spinlock_t tx_desc_lock ____cacheline_aligned_in_smp;
 	struct pcie_desc_data desc_data[PCIE_NUM_OF_DESC_DATA];
-	struct sk_buff_head delay_q;
+	int delay_q_idx;
+	struct sk_buff *delay_q[PCIE_DELAY_FREE_Q_LIMIT];
 	/* number of descriptors owned by fw at any one time */
 	int fw_desc_cnt[PCIE_NUM_OF_DESC_DATA];
 
