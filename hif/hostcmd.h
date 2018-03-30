@@ -75,6 +75,7 @@
 #define HOSTCMD_CMD_QUIET_MODE                  0x1201
 #define HOSTCMD_CMD_CORE_DUMP_DIAG_MODE         0x1202
 #define HOSTCMD_CMD_GET_FW_CORE_DUMP            0x1203
+#define HOSTCMD_CMD_MCAST_CTS                   0x4001
 
 /* Define general result code for each command */
 #define HOSTCMD_RESULT_OK                       0x0000
@@ -1147,6 +1148,12 @@ struct hostcmd_cmd_get_fw_core_dump_ {
 		struct coredump_cmd coredump;
 		struct debug_mem_cmd debug_mem;
 	} cmd_data;
+} __packed;
+
+/* HOSTCMD_CMD_MCAST_CTS */
+struct hostcmd_cmd_mcast_cts {
+	struct hostcmd_header cmd_hdr;
+	u8 enable;            /* 1:enable, 0:disable */
 } __packed;
 
 #endif /* _HOSTCMD_H_ */
