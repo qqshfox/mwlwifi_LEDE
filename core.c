@@ -944,6 +944,10 @@ struct ieee80211_hw *mwl_alloc_hw(int bus_type,
 	priv->fw_device_pwrtbl = false;
 	priv->forbidden_setting = false;
 	priv->regulatory_set = false;
+	priv->use_short_slot = false;
+	priv->use_short_preamble = false;
+	priv->basic_rate_idx = 0;
+	priv->broadcast_ssid = 0xFF;
 	priv->disable_2g = false;
 	priv->disable_5g = false;
 	priv->tx_amsdu = true;
@@ -1042,9 +1046,9 @@ int mwl_init_hw(struct ieee80211_hw *hw, const char *fw_name,
 
 void mwl_deinit_hw(struct ieee80211_hw *hw)
 {
-	mwl_wl_deinit(hw->priv);
-
 #ifdef CONFIG_DEBUG_FS
 	mwl_debugfs_remove(hw);
 #endif
+
+	mwl_wl_deinit(hw->priv);
 }
